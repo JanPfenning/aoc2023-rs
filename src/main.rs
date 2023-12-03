@@ -8,6 +8,12 @@ mod d01 {
 use d01::solution::p1 as solutionD01P1;
 use d01::solution::p2 as solutionD01P2;
 
+mod d02 {
+  pub mod solution;
+}
+use d02::solution::p1 as solutionD02P1;
+use d02::solution::p2 as solutionD02P2;
+
 fn main() {
   let args: Vec<String> = args().collect();
   let mut day = None;
@@ -44,6 +50,8 @@ fn main() {
   let mut map: HashMap<String, fn()> = HashMap::new();
   map.insert("d01p1".to_string(), solutionD01P1 as fn());
   map.insert("d01p2".to_string(), solutionD01P2 as fn());
+  map.insert("d02p1".to_string(), solutionD02P1 as fn());
+  map.insert("d02p2".to_string(), solutionD02P2 as fn());
   
   let func_name_to_query = format!("d{day}p{part}");
   println!("func name to query map with: {}",func_name_to_query);
