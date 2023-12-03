@@ -62,12 +62,8 @@ fn parse_draws_string_to_draw_struct(draw_string: &str) -> Vec<Draw> {
     draws
 }
 
-pub fn p1() {
+fn parse_games() -> Vec<Game>{
     let puzzle_input = read_puzzle_input();
-
-    let max_draw = Draw {
-        red: 12, green: 13, blue: 14
-    };
 
     let games = puzzle_input
         .split("\n")
@@ -82,6 +78,14 @@ pub fn p1() {
             draws: parse_draws_string_to_draw_struct(&game[1]) 
         }
     }).collect::<Vec<Game>>();
+    games
+}
+
+pub fn p1() {
+    let max_draw = Draw {
+        red: 12, green: 13, blue: 14
+    };
+    let games = parse_games();
     println!("{:?}", games.get(0).unwrap());
     let possible_games = games
         .iter()
@@ -100,9 +104,21 @@ pub fn p1() {
 }
 
 pub fn p2() {
-    let puzzle_input = read_puzzle_input();
-    let _games: Vec<String> = puzzle_input
-        .split("\n")
-        .map(|s| s.to_string())
-        .collect();
+    let games = parse_games();
+    let max_overall_draw = games
+        .iter()
+        .map(
+            |game| game.draws
+                .iter()
+                .fold(Draw {red: 0, green: 0, blue: 0}, |acc, draw| 
+                    Draw {
+                        red: acc.red.max(draw.red),
+                        blue: acc.blue.max(draw.blue),
+                        green: acc.green.max(draw.green)
+                    }
+                )
+        ).collect::<Vec<Draw>>();
+    let power_of_draw = max_overall_draw.iter().map(|draw| (draw.red as usize) * (draw.green as usize) * (draw.blue as usize)).collect::<Vec<usize>>();
+    let sum_of_powers_of_draws = power_of_draw.iter().fold(0, |acc,iter| acc+iter);
+    println!("sum_of_powers_of_draws: {:?}",sum_of_powers_of_draws)
 }
