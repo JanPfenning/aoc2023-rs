@@ -43,7 +43,7 @@ impl From<GridNumber> for PartNumber {
     }
 }
 
-fn parse_number(char_list: Vec<char>) -> usize {
+fn parse_number(char_list: &Vec<char>) -> usize {
     let string = char_list.iter().collect::<String>(); 
     string.parse::<usize>().expect(format!("could not parse the string \"{}\" to a number", string).as_str())
 }
@@ -71,7 +71,7 @@ fn find_numbers(grid: &Grid) -> Vec<GridNumber> {
                     col_start = -1;
                     len = 0;
                 };
-                push_grid_number(GridNumber { row: (row_index), col: (col_start_clone as usize), number: parse_number(chars_of_cur_grid_number.to_vec()) })
+                push_grid_number(GridNumber { row: (row_index), col: (col_start_clone as usize), number: parse_number(&chars_of_cur_grid_number.to_vec()) })
             } else if searching_number {
                 //
             } else {
@@ -85,7 +85,7 @@ fn find_numbers(grid: &Grid) -> Vec<GridNumber> {
                         col_start = -1;
                         len = 0;
                     };
-                    push_grid_number(GridNumber { row: (row_index), col: (col_index), number: parse_number(vec![current_char.clone()]) })
+                    push_grid_number(GridNumber { row: (row_index), col: (col_index), number: parse_number(&vec![current_char.clone()]) })
                 } else {
                     let chars_of_cur_grid_number = &row[(col_start as usize)..((col_start as usize)+len)];
                 let col_start_clone = col_start;
@@ -94,7 +94,7 @@ fn find_numbers(grid: &Grid) -> Vec<GridNumber> {
                     col_start = -1;
                     len = 0;
                 };
-                push_grid_number(GridNumber { row: (row_index), col: (col_start_clone as usize), number: parse_number(chars_of_cur_grid_number.to_vec()) })
+                push_grid_number(GridNumber { row: (row_index), col: (col_start_clone as usize), number: parse_number(&chars_of_cur_grid_number.to_vec()) })
                 }
             }
         })
@@ -103,7 +103,7 @@ fn find_numbers(grid: &Grid) -> Vec<GridNumber> {
 }
 
 fn has_symbol_around(grid: &Grid, grid_number: &GridNumber) -> bool {
-    println!("cur processed grid_number: {:?}", grid_number);
+    //println!("cur processed grid_number: {:?}", grid_number);
     let rows = match panic::catch_unwind(|| grid_number.row-1) {
         Ok(val) => {val},
         Err(_) => {0},
