@@ -73,34 +73,34 @@ fn get_number_of_cards(cards: &Vec<ScratchCard>, id_of_card_in_question: u8, mut
         //println!("cache hit for {id_of_card_in_question}");
         return *(cache.get(&id_of_card_in_question).unwrap()); 
     } else {
-        println!("cache miss for {id_of_card_in_question}\nstart calculation")
+        //println!("cache miss for {id_of_card_in_question}\nstart calculation")
     }
 
     let id_of_card_in_question = usize::from(id_of_card_in_question);
     if id_of_card_in_question > cards.len() { 
-        println!("found 0 as value for {id_of_card_in_question}");
+        //println!("found 0 as value for {id_of_card_in_question}");
         cache.insert(id_of_card_in_question.try_into().unwrap(), 0);
         return 0;
      }
 
     let cur_card = cards.get(id_of_card_in_question-1).expect("no card found for id");
     let copies_to_receive = get_played_winning_numbers(&cur_card).len();
-    println!("receive {copies_to_receive} new cards");
+    //println!("receive {copies_to_receive} new cards");
 
     if copies_to_receive == 0 {
-        println!("found 1 as value for {id_of_card_in_question}"); 
+        //println!("found 1 as value for {id_of_card_in_question}"); 
         cache.insert(id_of_card_in_question.try_into().unwrap(), 1);
         return 1;
      }
 
     let ids_to_check = (id_of_card_in_question+1)..=(id_of_card_in_question+copies_to_receive);
-    println!("Ids to add for {id_of_card_in_question}: {:?}", ids_to_check);
+    //println!("Ids to add for {id_of_card_in_question}: {:?}", ids_to_check);
     
     let value = 1 + ids_to_check.map(|id| {
         //println!("recursive search for {id}");
         get_number_of_cards(&cards, id.try_into().unwrap(), &mut cache)
     }).fold(0, |acc, iter| acc + iter);
-    println!("found {value} as value for {id_of_card_in_question}");
+    //println!("found {value} as value for {id_of_card_in_question}");
     cache.insert(id_of_card_in_question.try_into().unwrap(), value);
     value
 }
