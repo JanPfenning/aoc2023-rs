@@ -33,7 +33,7 @@ pub fn p1() {
     
     let mut i = 0;
     let mut cur_idx = 0;
-    while(true){
+    loop {
         let pos = instructions.get(i % instructions.len()).unwrap();
         println!("instruction: {}", pos);
         if *pos == 0 {
@@ -80,7 +80,7 @@ pub fn p2() {
     //let mut list_to_visited_indices_per_start = start_a_list.clone().iter().map(|start| vec![*start]).collect::<Vec<Vec<usize>>>();
     let mut last_visited_index_per_start = start_a_list.clone();
     let mut i = 0;
-    while(true){
+    loop {
         if i % 10_000_000 == 0 {
             println!("iteration: {i}, current status: {:?}", last_visited_index_per_start)
         };

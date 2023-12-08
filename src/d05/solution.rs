@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone)]
 struct Translation {
