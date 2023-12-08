@@ -143,7 +143,7 @@ fn is_two_pair(hand: &Hand) -> bool {
         if counts.iter().any(|&x| x >= 2) {return true};
     }
     // no joker =>
-    counts.iter().enumerate().filter(|(idx, &count)| count == 2).count() == 2
+    counts.iter().filter(| &count| *count == 2).count() == 2
 }
 
 fn is_one_pair(hand: &Hand) -> bool {
