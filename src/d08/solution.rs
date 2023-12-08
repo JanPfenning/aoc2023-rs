@@ -53,6 +53,22 @@ pub fn p1() {
 // 11A => 11B => 11Z => 11B => 11Z => 11B => 11Z
 // 22A => 22B => 22C => 22Z => 22B => 22C => 22Z
 
+fn gcd(a: isize, b: isize) -> isize {
+    if b == 0 {
+        a.abs()
+    } else {
+        gcd(b, a % b)
+    }
+}
+
+fn lcm(a: isize, b: isize) -> isize {
+    (a * b).abs() / gcd(a, b)
+}
+
+fn lcm_list(nums: &Vec<isize>) -> isize {
+    nums.iter().fold(1, |a, &b| lcm(a, b))
+}
+
 pub fn p2() {
     let input_lines = read_puzzle_input().split("\n").map(|val| val.to_owned()).collect::<Vec<String>>();
     //println!("{input_lines:#?}");
@@ -80,13 +96,11 @@ pub fn p2() {
     //let mut list_to_visited_indices_per_start = start_a_list.clone().iter().map(|start| vec![*start]).collect::<Vec<Vec<usize>>>();
     let mut last_visited_index_per_start = start_a_list.clone();
     let mut i = 0;
-    loop {
-        if i % 10_000_000 == 0 {
-            println!("iteration: {i}, current status: {:?}", last_visited_index_per_start)
-        };
-        let currently_all_on_zs = last_visited_index_per_start.iter().all(|last_visit: &usize| last_visit % 26 == 25);
+
+    let mut first_finished_at: Vec<usize> = vec![0; start_a_list.len()];
+    while !first_finished_at.iter().all(|x| *x > 0) {
+        last_visited_index_per_start.iter().enumerate().for_each(|(idx, last_visit)| if last_visit % 26 == 25 && last_visited_index_per_start[idx] != 0 {first_finished_at[idx] = i});
         let instruction = instructions.get(i % instructions.len()).unwrap();
-        //println!("instruction: {}", instruction);
         last_visited_index_per_start = last_visited_index_per_start.iter().map(|last_visit| {
             let next_val: usize = {
                 if *instruction == 0 {
@@ -97,15 +111,11 @@ pub fn p2() {
             };
             next_val
         }).collect();
-        
-        if currently_all_on_zs {
-            break
-        }
         i+=1;
     }
+
+    let result = lcm_list(&first_finished_at.iter().map(|x| *x as isize).collect());
     
-    println!("iterations needed: {i}");
-    
-    println!("{:?}", last_visited_index_per_start);
-    //println!("{:?}", results.max());
+    println!("{:?}", first_finished_at);
+    println!("lcm {:?}", result);
 }
