@@ -1,23 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::thread;
+use std::sync::{Arc, Mutex};
 
-fn read_puzzle_input() -> String {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let file_path = root.join("src/d05/puzzleinput_example.txt");
-    //println!("{}", file_path.to_string_lossy());
-    let contents = fs::read_to_string(file_path)
-        .expect(format!("Something went wrong reading the file").as_str());
-    contents
-}
-
-pub fn p1() {
-    let input_lines = read_puzzle_input().split("\n").map(|val| val.to_owned()).collect::<Vec<String>>();
-    println!("{:?}", input_lines);
-}
-
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 struct Translation {
     from: usize,
     to: usize,
@@ -30,17 +15,118 @@ impl PartialEq for Translation {
     }
 }
 
-#[derive(Debug, Clone)]
+impl std::fmt::Debug for Translation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{from: {}, to: {}, summand: {}}}", self.from, self.to, self.summand)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 struct Chunk {
     name: String,
     translations: Vec<Translation>
+}
+
+fn read_puzzle_input() -> String {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let file_path = root.join("src/d05/puzzleinput.txt");
+    //println!("{}", file_path.to_string_lossy());
+    let contents = fs::read_to_string(file_path)
+        .expect(format!("Something went wrong reading the file").as_str());
+    contents
+}
+
+pub fn p1() {
+    let input_lines = read_puzzle_input().split("\n").map(|val| val.to_owned()).collect::<Vec<String>>();
+    let seeds: Vec<usize> = input_lines.get(0).unwrap()
+        .split(": ").into_iter().collect::<Vec<_>>().get(1).unwrap()
+        .split(" ").map(|x| x.parse::<usize>().unwrap()).collect::<Vec<usize>>();
+    let chunks: Vec<String> = input_lines.join("\n").split("\n\n").skip(1).map(|s| s.to_string()).into_iter().collect();
+    let chunks: Vec<Chunk> = chunks.iter().map(|chunk| parse_chunk_from_string(chunk)).collect();
+    println!("-----");
+
+    let seed_to_location = propagate_chunks_to_get_seed_to_location(chunks);
+    
+    let locations = seeds.into_iter()
+        .map(|seed| get_destination_value_using_chunk(seed, &seed_to_location))
+        .collect::<Vec<usize>>();
+    let mut result = locations;
+    result.sort();
+    println!("{:?}", result);
+    println!("result {:?}", result.get(0));
+}
+
+fn get_destination_value_using_chunk(val: usize, chunk: &Chunk) -> usize {
+    let translation = (*chunk.translations).into_iter().find(|translation| translation.from<=val && translation.to > val);
+    let x = val as isize + match translation {
+        Some(trans) => { trans.summand },
+        None =>{ 0 },
+    };
+    x as usize
+}
+
+fn propagate_single_translation(a: &Translation, b: &Translation) -> Option<Translation> {
+    // shift a
+    let a_lower_in_bs_view = {
+        if a.summand > 0 {a.from.saturating_add(a.summand.abs() as usize)} else {a.from.saturating_sub(a.summand.abs() as usize)}
+    };
+    let a_upper_in_bs_view = {
+        if a.summand > 0 {a.to.saturating_add(a.summand.abs() as usize)} else {a.to.saturating_sub(a.summand.abs() as usize)}
+    };
+    
+    // get intersection range
+    let intersection_lower = a_lower_in_bs_view.max(b.from);
+    let intersection_upper = a_upper_in_bs_view.min(b.to);
+    
+    // shift back to view of a
+    // shift a
+    let from = {
+        if a.summand > 0 {intersection_lower.saturating_sub(a.summand.abs() as usize)} else {intersection_lower.saturating_add(a.summand.abs() as usize)}
+    };
+    let to = {
+        if a.summand > 0 {intersection_upper.saturating_sub(a.summand.abs() as usize)} else {intersection_upper.saturating_add(a.summand.abs() as usize)}
+    };
+
+    if to <= from { return None }
+    
+    // 
+    let translation = Translation {
+        from, to, summand: a.summand + b.summand
+    };
+    Some(translation)
+}
+
+fn propagate_chunks_to_get_seed_to_location(chunks: Vec<Chunk>) -> Chunk {
+    let base_chunk = Chunk {
+        name: "seed-to-seed".to_string(),
+        translations: [Translation {
+            from: 0,
+            to: usize::MAX,
+            summand: 0
+        }].to_vec()
+    };
+    let seed_to_soil = merge_chunks(&base_chunk, chunks.get(0).unwrap());
+    println!("{:#?}", seed_to_soil);
+    let seed_to_fertilizer = merge_chunks(&seed_to_soil, chunks.get(1).unwrap());
+    println!("{:#?}", seed_to_fertilizer);
+    let seed_to_water = merge_chunks(&seed_to_fertilizer, chunks.get(2).unwrap());
+    println!("{:#?}", seed_to_water);
+    let seed_to_light = merge_chunks(&seed_to_water, chunks.get(3).unwrap());
+    println!("{:#?}", seed_to_light);
+    let seed_to_temperature = merge_chunks(&seed_to_light, chunks.get(4).unwrap());
+    println!("{:#?}", seed_to_temperature);
+    let seed_to_humidity = merge_chunks(&seed_to_temperature, chunks.get(5).unwrap());
+    println!("{:#?}", seed_to_humidity);
+    let seed_to_location = merge_chunks(&seed_to_humidity, chunks.get(6).unwrap());
+    println!("{:#?}", seed_to_location);
+    seed_to_location
 }
 
 fn parse_chunk_from_string(s: &str) -> Chunk {
     let all_lines = s.split("\n").into_iter().collect::<Vec<&str>>();
     let name = all_lines.get(0).unwrap().replace(" map:", "");
     let translation_lines = all_lines.get(1..=(all_lines.len()-1)).unwrap();
-    let translations = translation_lines.iter().map(|line| {
+    let mut translations: Vec<Translation> = translation_lines.iter().map(|line| {
         let parts = line.split(" ").into_iter().map(|val| val.parse::<usize>().unwrap()).collect::<Vec<usize>>();
         let [dest_start, source_start, len] = [parts.get(0).unwrap(), parts.get(1).unwrap(), parts.get(2).unwrap()];
         Translation {
@@ -49,151 +135,113 @@ fn parse_chunk_from_string(s: &str) -> Chunk {
             summand: (*dest_start as isize) - (*source_start as isize),
         }
     }).collect();
+    translations.sort_by(|translation_a, translation_b| translation_a.from.cmp(&translation_b.from)); 
+    
+    // if first translations from is bigger than 0 => add a translation from 0 to the "from" with summand 0
+    if translations[0].from > 0 {
+        translations.insert(0, Translation {from: 0, to: translations[0].from, summand: 0 });
+    }
+
+    // any two translations are not back to back (exclusive to does not match the next inclusive "from") add a new translation filling the gap with summand 0
+    let mut i = 1;
+    while i < translations.len() {
+        let prev = translations[i-1].clone();
+        let cur = translations[i].clone();
+        if cur.from != prev.to {
+            let trans = Translation {
+                from: prev.to,
+                to: cur.from,
+                summand: 0,
+            };
+            translations.insert(i, trans);
+        }
+        i += 1;
+    }
+
+    // if last translations "to" is less than usize::max add a translation from the last "to" to the max value with summand 0
+    let last_trans = translations[translations.len() - 1].clone();
+    if last_trans.to < std::usize::MAX {
+        translations.push(Translation {from: last_trans.to, to: std::usize::MAX, summand: 0 });
+    }
+    
     let chunk = Chunk {
         name, translations
     };
-    println!("{chunk:?}");
+    println!("{:#?}", chunk);
     chunk
 }
 
-fn propagate_translation(base_translation: &Translation, follow_translations: &[Translation]) -> Vec<Translation> {
-    let base_summand = base_translation.summand;
-    let mut results = Vec::with_capacity(follow_translations.len());
-    let mut last_to: usize = base_translation.from;
+fn merge_chunks(chunk_from: &Chunk, chunk_to: &Chunk) -> Chunk {
+    let chunk_from_name_parts: Vec<&str> = chunk_from.name.split("-").collect();
+    let chunk_to_name_parts: Vec<&str> = chunk_to.name.split("-").collect();
+    if chunk_from_name_parts[2] != chunk_to_name_parts[0] { panic!("incompatible chunks")}
+    let from = chunk_from_name_parts[0].to_string();
+    let to = chunk_to_name_parts[2].to_string();
+    let name = format!("{}-to-{}",from, to);
+    
+    let propagated_translations: Vec<Translation> = chunk_from.translations.iter()
+        .flat_map(|translation| {
+            chunk_to.translations.iter()
+                .filter_map(|second| propagate_single_translation(translation, second))
+        }).collect();
 
-    let mut follow_translations_sorted = follow_translations.to_vec();
-    follow_translations_sorted.sort_by(|a, b| a.from.cmp(&b.from).then_with(|| a.to.cmp(&b.to)));
-
-    for trans in follow_translations_sorted {
-        let is_outside_range = trans.from >= base_translation.to || trans.to <= base_translation.from;
-
-        if !is_outside_range {
-            let from = base_translation.from.max(trans.from);
-            let to = base_translation.to.min(trans.to);
-
-            if last_to < from {
-                // Add filler translation with base summand if there is a gap
-                results.push(Translation { from: last_to, to: from, summand: base_summand });
-            }
-
-            // Add the current translations's summand to base summand
-            results.push(Translation { from, to, summand: trans.summand + base_summand });
-            last_to = to;
-        }
-    }
-
-    if last_to < base_translation.to {
-        // Fill the gap between last_to and base_translation.to with base summand
-        results.push(Translation { from: last_to, to: base_translation.to, summand: base_summand });
-    }
-
-    results
+    let merged = Chunk {
+        name, 
+        translations: propagated_translations
+    };
+    //println!("merged {:#?}", merged);
+    merged
 }
 
 #[cfg(test)]
-mod tests {
+mod merge_chunks_tests {
     use super::*;
 
     struct TestCase {
-        base_range: Translation,
-        translations: Vec<Translation>,
-        expected: Vec<Translation>,
+        from_chunk: Chunk,
+        to_chunk: Chunk,
+        expected_merged: Chunk,
     }
 
     #[test]
     fn test_propagate_translation() {
-        let fertilizer_to_water = vec![
-            Translation { from: 0, to: 7, summand: 42 },
-            Translation { from: 11, to: 53, summand: -11 },
-            Translation { from: 7, to: 11, summand: 50 },
-            Translation { from: 53, to: 61, summand: -4 },
-        ];
+        
         let test_cases = vec![
             TestCase {
-                base_range: Translation {from: 5, to: 30, summand: 0},
-                translations: vec![
-                    Translation {from: 3, to: 18, summand: 2},
-                    Translation {from: 20, to: 25, summand: -5},
-                    Translation {from: 28, to: 35, summand: 3},
-                ],
-                expected: vec![
-                    Translation {from: 5, to: 18, summand: 2},
-                    Translation {from: 18, to: 20, summand: 0},
-                    Translation {from: 20, to: 25, summand: -5},
-                    Translation {from: 25, to: 28, summand: 0},
-                    Translation {from: 28, to: 30, summand: 3},
-                ],
-            },
-            TestCase {
-                base_range: Translation {from: 5, to: 30, summand: 2},
-                translations: vec![
-                    Translation {from: 3, to: 18, summand: 3},
-                    Translation {from: 20, to: 25, summand: -5},
-                    Translation {from: 28, to: 35, summand: 1},
-                ],
-                expected: vec![
-                    Translation {from: 5, to: 18, summand: 5},
-                    Translation {from: 18, to: 20, summand: 2},
-                    Translation {from: 20, to: 25, summand: -3},
-                    Translation {from: 25, to: 28, summand: 2},
-                    Translation {from: 28, to: 30, summand: 3},
-                ],
-            },
-            TestCase {
-                base_range: Translation { from: 50, to: 52, summand: -13 },
-                translations: fertilizer_to_water.clone(),
-                expected: vec![
-                    Translation {from: 50, to: 52, summand: -24},
-                ],
-            },
-            TestCase {
-                base_range: Translation { from: 52, to: 54, summand: -13 },
-                translations: fertilizer_to_water.clone(),
-                expected: vec![
-                    Translation {from: 52, to: 53, summand: -24},
-                    Translation {from: 53, to: 54, summand: -17},
-                ],
-            },
-            TestCase {
-                base_range: Translation { from: 54, to: 98, summand: 2 },
-                translations: fertilizer_to_water.clone(),
-                expected: vec![
-                    Translation {from: 54, to: 61, summand: -2},
-                    Translation {from: 61, to: 98, summand: 2},
-                ],
-            },
-            TestCase {
-                base_range: Translation { from: 98, to: 100, summand: -48 },
-                translations: fertilizer_to_water.clone(),
-                expected: vec![
-                    Translation {from: 98, to: 100, summand: -48},
-                ],
-            },
+                from_chunk: Chunk {
+                    name: "x-to-y".to_string(),
+                    translations: vec![
+                        Translation { from: 4, to: 13, summand: 2 },
+                        Translation { from: 13, to: 16, summand: -2 }
+                    ]
+                },
+                to_chunk: Chunk {
+                    name: "y-to-z".to_string(),
+                    translations: vec![
+                        Translation { from: 4, to: 8, summand: -4 },
+                        Translation { from: 8, to: 11, summand: 3 },
+                        Translation { from: 11, to: 13, summand: 1 },
+                        Translation { from: 13, to: 20, summand: -2 }
+                    ]
+                },
+                expected_merged: Chunk {
+                    name: "x-to-z".to_string(),
+                    translations: vec![
+                        Translation { from: 4, to: 6, summand: -2 },
+                        Translation { from: 6, to: 9, summand: 5 },
+                        Translation { from: 9, to: 11, summand: 3 },
+                        Translation { from: 11, to: 13, summand: 0 },
+                        Translation { from: 13, to: 15, summand: -1 },
+                        Translation { from: 15, to: 16, summand: -4 },
+                    ]
+                }
+            }
         ];
 
         for case in test_cases {
-            let result = propagate_translation(&case.base_range, &case.translations);
-            assert_eq!(result, case.expected);
+            let result = merge_chunks(&case.from_chunk, &case.to_chunk);
+            assert_eq!(result, case.expected_merged);
         }
-    }
-}
-
-fn merge_chunks(chunk_from: &Chunk, chunk_to: &Chunk) -> Chunk {
-    let chunk_from_name_parts = chunk_from.name.split("-").into_iter().collect::<Vec<&str>>();
-    let chunk_to_name_parts = chunk_to.name.split("-").into_iter().collect::<Vec<&str>>();
-    if chunk_from_name_parts.get(2).unwrap() != chunk_to_name_parts.get(0).unwrap() { panic!("incompatible chunks")}
-    let from = chunk_from_name_parts.get(0).unwrap().to_string();
-    let to = chunk_to_name_parts.get(2).unwrap().to_string();
-    let name = format!("{from}-to-{to}");
-    
-    let propagated_translations = chunk_from.translations.iter()
-        .map(|translation| {
-            propagate_translation(translation, &chunk_to.translations)
-        })
-        .collect::<Vec<Vec<Translation>>>();
-    Chunk {
-        name, 
-        translations: propagated_translations.into_iter().flatten().collect()
     }
 }
 
@@ -204,87 +252,57 @@ pub fn p2() {
         .split(" ").map(|x| x.parse::<usize>().unwrap()).collect::<Vec<usize>>();
     let chunks: Vec<String> = input_lines.join("\n").split("\n\n").skip(1).map(|s| s.to_string()).into_iter().collect();
     let chunks: Vec<Chunk> = chunks.iter().map(|chunk| parse_chunk_from_string(chunk)).collect();
-    //chunks.iter().for_each(|chunk| println!("{:?}", chunk));
-    let seed_to_fertilizer = merge_chunks(chunks.get(0).unwrap(), chunks.get(1).unwrap());
-    //println!("{:?}", seed_to_fertilizer);
-    let seed_to_water = merge_chunks(&seed_to_fertilizer, chunks.get(2).unwrap());
-    //println!("{:?}", seed_to_water);
-    let seed_to_light = merge_chunks(&seed_to_water, chunks.get(3).unwrap());
-    //println!("{:?}", seed_to_light);
-    let seed_to_temperature = merge_chunks(&seed_to_light, chunks.get(4).unwrap());
-    //println!("{:?}", seed_to_temperature);
-    let seed_to_humidity = merge_chunks(&seed_to_temperature, chunks.get(5).unwrap());
-    //println!("{:?}", seed_to_humidity);
-    let seed_to_location = merge_chunks(&seed_to_humidity, chunks.get(6).unwrap());
-    println!("{:?}", seed_to_location.name);
-    let mut translations = seed_to_location.translations;
-    translations.sort_by(|translation_a, translation_b| translation_a.from.cmp(&translation_b.from));
+    let seed_to_location = propagate_chunks_to_get_seed_to_location(chunks);
     
-    // TODO translation does not translate 82 to 46 but 82 to 49
-    translations.iter().for_each(|translation| println!("{translation:?}"));
-    
-    // Adjust each seed range based on the translations
     let seed_ranges: Vec<(usize, usize)> = seeds.chunks_exact(2).map(|pair| (pair[0], pair[0]+pair[1])).collect();
-    println!("number of seeds: {}", seed_ranges.iter().map(|(from, to)| to-from).fold(0, |acc, iter| acc + iter));
-    // let seed_ranges = seed_ranges.iter().map(|(from, to)| Translation {
-    //     from: *from,
-    //     to: *to,
-    //     summand: 0,
-    // }).collect::<Vec<Translation>>();
-    println!("seed ranges: {seed_ranges:?}");
-    //let result = apply_translation_to_get_smallest_location_for_seed_in_range(seed_ranges, translations.into());
-    let result = find_smallest_location(seed_ranges, translations.into());
-    println!("result {result:?}");
-    // i have a list of translations that all map seed ids to location ids.
-    // Each entry is encoded as an object with (from: the first seed id that is eligable for this translation) (to: the last seed id that can be translated with this - exclusive) and (summand - the value added to any of the seeds in range to retreive the corresponding location)
 
-    // given a list of seed ranges encoded as each (from, to) 
+    // Find the smallest range.
+    let min_range_size = seed_ranges.iter().map(|(start, end)| end - start).min().unwrap();
 
-    // how to find the smallest location that is possible to retrieve with one of the seeds described by the seedrange using any of the translations?
-}
-
-fn find_smallest_location(seed_ranges: Vec<(usize, usize)>, translations: Vec<Translation>) -> Option<isize> {
-    let mut smallest_location: Option<isize> = None;
-
-    let mut seed_index = 0;
-    let mut trans_index = 0;
-    
-    while seed_index < seed_ranges.len() && trans_index < translations.len() {
-        let (from_seed, to_seed) = seed_ranges[seed_index];
-        let trans = translations[trans_index];
-
-        // If the seed range and translation overlap 
-        if !(to_seed <= trans.from || from_seed >= trans.to) {
-            // Get the overlapping part of the seed range and the translation
-            let overlap_from = std::cmp::max(from_seed, trans.from);
-            let overlap_to = std::cmp::min(to_seed, trans.to);
-
-            // Calculate the location from the overlapping range
-            for seed in overlap_from..overlap_to {
-                let location = seed as isize + trans.summand;
-                smallest_location = match smallest_location {
-                    None => Some(location),
-                    Some(val) => Some(val.min(location)),
-                };
-            }
-            
-            // If the seed range ends before or at the same point as the translation, go to next seed range
-            if to_seed <= trans.to {
-                seed_index += 1;
-            }
-
-            // If the translation ends before or at the same point as the seed range, go to next translation
-            if trans.to <= to_seed {
-                trans_index += 1;
-            }
-        } else if to_seed <= trans.from {
-            // If the seed range is completely before the translation, go to next seed range
-            seed_index += 1;
-        } else if from_seed >= trans.to {
-            // If the translation is completely before the seed range, go to next translation
-            trans_index += 1;
+    // Partition ranges based on the smallest range.
+    let mut partitioned_ranges = vec![];
+    for (start, end) in seed_ranges {
+        let mut cur_start = start;
+        while cur_start < end {
+            let cur_end = std::cmp::min(cur_start + min_range_size, end);
+            partitioned_ranges.push((cur_start, cur_end));
+            cur_start = cur_end;
         }
     }
 
-    smallest_location
+    let seed_ranges = partitioned_ranges;
+    println!("{:?}", seed_ranges);
+    println!("{:?} threads will be opened", seed_ranges.len());
+    let total_iterations: usize = seed_ranges.iter().map(|(from, to)| to - from).sum();
+    println!("Total iterations: {}", total_iterations);
+
+    let progress = Arc::new(Mutex::new(0));
+
+    let update_frequency = 100_000_000;
+    let mut handles = vec![];
+    println!("{:?}", seed_ranges.iter().map(|range| range.1-range.0).min());
+    for &seed_range in &seed_ranges {
+        let seed_to_location = seed_to_location.clone();
+        let progress = Arc::clone(&progress);
+        handles.push(std::thread::spawn(move || {            
+            (seed_range.0..seed_range.1).enumerate().map(|(idx, seed)| {
+                let val = get_destination_value_using_chunk(seed, &seed_to_location);
+
+                if idx % update_frequency == 0 && idx != 0 {
+                    let mut progress = progress.lock().unwrap();   
+                    *progress += update_frequency;
+                    let completed = *progress as f32 / total_iterations as f32 * 100.0;
+                    println!("[{}{}] {:05.2}%", "=".repeat((completed / 2.0) as usize), " ".repeat(50usize - (completed / 2.0) as usize), completed);
+                }
+                val
+            })
+            .min()
+            .unwrap()
+        }));
+    }
+
+    let min_values: Vec<usize> = handles.into_iter().map(|handle| handle.join().unwrap()).collect();
+    let min_value = *min_values.iter().min().unwrap();
+    println!("min values {:?}", min_values);
+    println!("result {}", min_value);
 }
