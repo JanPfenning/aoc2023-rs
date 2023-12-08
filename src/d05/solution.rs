@@ -45,7 +45,16 @@ pub fn p1() {
     let chunks: Vec<Chunk> = chunks.iter().map(|chunk| parse_chunk_from_string(chunk)).collect();
     println!("-----");
 
-    let seed_to_location = propagate_chunks_to_get_seed_to_location(chunks);
+    let base_chunk = Chunk {
+        name: "seed-to-seed".to_string(),
+        translations: [Translation {
+            from: 0,
+            to: usize::MAX,
+            summand: 0
+        }].to_vec()
+    };
+
+    let seed_to_location = propagate_chunks_to_get_seed_to_location(base_chunk, chunks);
     
     let locations = seeds.into_iter()
         .map(|seed| get_destination_value_using_chunk(seed, &seed_to_location))
@@ -96,15 +105,7 @@ fn propagate_single_translation(a: &Translation, b: &Translation) -> Option<Tran
     Some(translation)
 }
 
-fn propagate_chunks_to_get_seed_to_location(chunks: Vec<Chunk>) -> Chunk {
-    let base_chunk = Chunk {
-        name: "seed-to-seed".to_string(),
-        translations: [Translation {
-            from: 0,
-            to: usize::MAX,
-            summand: 0
-        }].to_vec()
-    };
+fn propagate_chunks_to_get_seed_to_location(base_chunk: Chunk, chunks: Vec<Chunk>) -> Chunk {
     let seed_to_soil = merge_chunks(&base_chunk, chunks.get(0).unwrap());
     println!("{:#?}", seed_to_soil);
     let seed_to_fertilizer = merge_chunks(&seed_to_soil, chunks.get(1).unwrap());
@@ -252,57 +253,23 @@ pub fn p2() {
         .split(" ").map(|x| x.parse::<usize>().unwrap()).collect::<Vec<usize>>();
     let chunks: Vec<String> = input_lines.join("\n").split("\n\n").skip(1).map(|s| s.to_string()).into_iter().collect();
     let chunks: Vec<Chunk> = chunks.iter().map(|chunk| parse_chunk_from_string(chunk)).collect();
-    let seed_to_location = propagate_chunks_to_get_seed_to_location(chunks);
     
     let seed_ranges: Vec<(usize, usize)> = seeds.chunks_exact(2).map(|pair| (pair[0], pair[0]+pair[1])).collect();
 
-    // Find the smallest range.
-    let min_range_size = seed_ranges.iter().map(|(start, end)| end - start).min().unwrap();
+    let base_chunk = Chunk {
+        name: "seed-to-seed".to_string(),
+        translations: seed_ranges.iter().map(|(from, to)| Translation { from: *from, to: *to, summand: 0}).collect()
+    };
 
-    // Partition ranges based on the smallest range.
-    let mut partitioned_ranges = vec![];
-    for (start, end) in seed_ranges {
-        let mut cur_start = start;
-        while cur_start < end {
-            let cur_end = std::cmp::min(cur_start + min_range_size, end);
-            partitioned_ranges.push((cur_start, cur_end));
-            cur_start = cur_end;
-        }
-    }
+    let seed_to_location = propagate_chunks_to_get_seed_to_location(base_chunk, chunks);
 
-    let seed_ranges = partitioned_ranges;
-    println!("{:?}", seed_ranges);
-    println!("{:?} threads will be opened", seed_ranges.len());
-    let total_iterations: usize = seed_ranges.iter().map(|(from, to)| to - from).sum();
-    println!("Total iterations: {}", total_iterations);
-
-    let progress = Arc::new(Mutex::new(0));
-
-    let update_frequency = 100_000_000;
-    let mut handles = vec![];
-    println!("{:?}", seed_ranges.iter().map(|range| range.1-range.0).min());
-    for &seed_range in &seed_ranges {
-        let seed_to_location = seed_to_location.clone();
-        let progress = Arc::clone(&progress);
-        handles.push(std::thread::spawn(move || {            
-            (seed_range.0..seed_range.1).enumerate().map(|(idx, seed)| {
-                let val = get_destination_value_using_chunk(seed, &seed_to_location);
-
-                if idx % update_frequency == 0 && idx != 0 {
-                    let mut progress = progress.lock().unwrap();   
-                    *progress += update_frequency;
-                    let completed = *progress as f32 / total_iterations as f32 * 100.0;
-                    println!("[{}{}] {:05.2}%", "=".repeat((completed / 2.0) as usize), " ".repeat(50usize - (completed / 2.0) as usize), completed);
-                }
-                val
-            })
-            .min()
-            .unwrap()
-        }));
-    }
-
-    let min_values: Vec<usize> = handles.into_iter().map(|handle| handle.join().unwrap()).collect();
-    let min_value = *min_values.iter().min().unwrap();
-    println!("min values {:?}", min_values);
-    println!("result {}", min_value);
+    let range_results = seed_to_location.translations.iter().map(|translation| {
+        let location_start_of_range = {
+            if translation.summand > 0 {translation.from.saturating_add(translation.summand.abs() as usize)} else {translation.from.saturating_sub(translation.summand.abs() as usize)}
+        };
+        let seed_sart_of_range = translation.from;
+        (seed_sart_of_range, location_start_of_range)
+    });
+    let seed_start_range_with_minimal_loation_start = range_results.min_by(|a, b| a.1.cmp(&b.1));
+    println!("{seed_start_range_with_minimal_loation_start:?}");
 }
