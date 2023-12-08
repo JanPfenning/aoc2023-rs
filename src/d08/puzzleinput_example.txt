@@ -1,0 +1,10 @@
+LR
+
+AAA = (AAB, DDD)
+AAB = (DDD, AAZ)
+AAZ = (AAB, DDD)
+BBA = (BBB, DDD)
+BBB = (BBC, BBC)
+BBC = (BBZ, BBZ)
+BBZ = (BBB, BBB)
+DDD = (DDD, DDD)
