@@ -144,7 +144,7 @@ fn traverse_pipes(grid: &Grid, cur_pos: (usize, usize), path: &mut Vec<(usize, u
         left
     ) = get_surroundings(grid, cur_pos);
     
-    
+    let surroundings = vec!(up, right, down, left);
 
     fn get_next_pos(direction: u8, surrounding_option: (&char, usize, usize), grid: &Vec<Vec<char>>, cur_pos: (usize, usize), old_pos: Option<(usize, usize)>, map: &DirectionMap) -> Option<(usize, usize)> {
         let (next_char, row, col) = surrounding_option;
@@ -160,60 +160,21 @@ fn traverse_pipes(grid: &Grid, cur_pos: (usize, usize), path: &mut Vec<(usize, u
         None
     }
 
-    if up.is_some() {
-        let next_pos = get_next_pos(0, up.unwrap(), grid, cur_pos, old_pos, &map);
-        match next_pos {
-            Some(val) => {
-                //println!("found next value - will be new current: {val:?}");
-                let is_s = *grid.get(val.0).unwrap().get(val.1).unwrap() == 'S';
-                if is_s {
-                    return path.clone();
-                } 
-                return traverse_pipes(grid, val, path);
-            }
-            None => {},
-        }        
-    }
-    if right.is_some() {
-        let next_pos = get_next_pos(1, right.unwrap(), grid, cur_pos, old_pos, &map);
-        match next_pos {
-            Some(val) => {
-                let is_s = *grid.get(val.0).unwrap().get(val.1).unwrap() == 'S';
-                if is_s {
-                    return path.clone();
-                } 
-                return traverse_pipes(grid, val, path)
-            }
-            None => {},
-        }        
-    }
-    if down.is_some() {
-        let next_pos = get_next_pos(2, down.unwrap(), grid, cur_pos, old_pos, &map);
-        match next_pos {
-            Some(val) => {
-                let is_s = *grid.get(val.0).unwrap().get(val.1).unwrap() == 'S';
-                if is_s {
-                    return path.clone();
-                } 
-                return traverse_pipes(grid, val, path)
-            }
-            None => {},
-        }        
-    }
-    if left.is_some() {
-        let next_pos = get_next_pos(3, left.unwrap(), grid, cur_pos, old_pos, &map);
-        match next_pos {
-            Some(val) => {
-                let is_s = *grid.get(val.0).unwrap().get(val.1).unwrap() == 'S';
-                if is_s {
-                    return path.clone();
-                } 
-                return traverse_pipes(grid, val, path)
-            }
-            None => {},
-        }        
-    }
-    return path.clone();
+    return surroundings.into_iter().enumerate().filter_map(|(idx, signature_option)| {
+        signature_option.and_then(|signature| {
+            let next_pos = get_next_pos(idx as u8, signature, grid, cur_pos, old_pos.clone(), &map);
+            match next_pos {
+                Some(val) => {
+                    let is_s = *grid.get(val.0).unwrap().get(val.1).unwrap() == 'S';
+                    if is_s {
+                        return Some(path.clone());
+                    } 
+                    return Some(traverse_pipes(grid, val, path));
+                },
+                None => None,
+            } 
+        })
+    }).next().unwrap_or(path.clone());
 }
 
 pub fn p1() {
