@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, collections::HashMap, io::Write};
+use std::{fs::{self, File}, collections::{HashMap, VecDeque}, io::Write};
 
 fn read_puzzle_input() -> String {
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -152,7 +152,7 @@ fn traverse_pipes(grid: &Grid, start_pos: (usize, usize)) -> Vec<(usize, usize)>
     let mut cur_pos = start_pos;
     
     loop {
-        println!("now at {:?}", cur_pos);
+        //println!("now at {:?}", cur_pos);
         let (up,
             right,
             down,
@@ -199,52 +199,76 @@ pub fn p1() {
     println!("result {:?}", (path.len() as f64 / 2.0).ceil());
 }
 
+
+
+fn pad_matrix(matrix: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    let mut new_matrix = Vec::new();
+
+    for (_row_idx, row) in matrix.iter().enumerate() {
+        let mut new_row = Vec::new();
+        for (_col_idx, &item) in row.iter().enumerate() {
+            new_row.push(item);
+            new_row.push('x');
+        }
+        new_matrix.push(new_row.clone());
+        new_matrix.push(new_row.iter().enumerate().map(|(_col_idx, _char)| 'x').collect::<Vec<_>>());
+    }
+
+    for row_idx in 0..new_matrix.len() {
+        for col_idx in 0..new_matrix[row_idx].len() {
+            if new_matrix[row_idx][col_idx] == 'x' {
+                new_matrix[row_idx][col_idx] = get_filler_ascii_char(&new_matrix, (row_idx, col_idx));
+            }
+        }
+    }
+
+    new_matrix
+}
+
+fn get_filler_ascii_char(matrix: &Vec<Vec<char>>, (row_idx, col_idx): (usize, usize)) -> char {
+    let (up, right, down, left) = get_surroundings(&matrix, (row_idx, col_idx));
+    let up_connects = up.is_some() && (*up.unwrap().0 == '┃' || *up.unwrap().0 == '┏' || *up.unwrap().0 == '┓');
+    let right_connects = right.is_some() && (*right.unwrap().0 == '━' || *right.unwrap().0 == '┛' || *right.unwrap().0 == '┓');
+    let down_connects = down.is_some() && (*down.unwrap().0 == '┃' || *down.unwrap().0 == '┛' || *down.unwrap().0 == '┗');
+    let left_connects = left.is_some() && (*left.unwrap().0 == '━' || *left.unwrap().0 == '┏' || *left.unwrap().0 == '┗');
+    let char_ = if up_connects && down_connects {'┃'} else if right_connects && left_connects { '━' } else {' '};
+    char_
+}
+
+fn get_s(matrix: &Vec<Vec<char>>, (row_idx, col_idx): (usize, usize)) -> char {
+    let (up, right, down, left) = get_surroundings(&matrix, (row_idx, col_idx));
+    let up_connects = up.is_some() && (*up.unwrap().0 == '|' || *up.unwrap().0 == 'F' || *up.unwrap().0 == '7');
+    let right_connects = right.is_some() && (*right.unwrap().0 == '━' || *right.unwrap().0 == 'J' || *right.unwrap().0 == '7');
+    let down_connects = down.is_some() && (*down.unwrap().0 == '|' || *down.unwrap().0 == 'J' || *down.unwrap().0 == 'L');
+    let left_connects = left.is_some() && (*left.unwrap().0 == '━' || *left.unwrap().0 == 'F' || *left.unwrap().0 == 'L');
+    let char_ = if up_connects && right_connects {'L'}
+         else if up_connects && down_connects { '|' } 
+         else if up_connects && left_connects { 'J' } 
+         else if right_connects && down_connects { 'F' } 
+         else if right_connects && left_connects { '-' } 
+         else if down_connects && left_connects { '7' } 
+         else {' '};
+    char_
+}
+
 pub fn p2() {
     let puzzle_input = read_puzzle_input();
     let grid: Grid = puzzle_input.split("\n").map(|val| val.chars().into_iter().collect::<Vec<char>>()).collect::<Grid>();
-    println!("grid: {:?}", grid);
     let s: (usize, usize) = find_s(&grid);
-    println!("{:?}", s);
+    println!("s: {:?}", s);
     let path = traverse_pipes(&grid, s);
-    println!("{:?}", path);
-    println!("{:?}", path.len());
 
-    let s_symbol: char = {
-        let (up, right, down, left ) = get_surroundings(&grid, s);
-        let up = up.is_some();
-        let right = right.is_some();
-        let down = down.is_some();
-        let left = left.is_some();
-        if up && down { '|' }
-        else if up && right { 'L' }
-        else if up && left { 'J' }
-        else if right && left { '-' }
-        else if down && left { '7' }
-        else if down && right { 'F' }
-        else { panic!("did not find a symbol for s") }
-    };
+    let s_symbol: char = get_s(&grid, s);
     let mut grid = grid.clone();
     grid[s.0][s.1] = s_symbol;
     let grid = grid;
-
-    let mut new_grid_from_horizontal: Vec<Vec<char>> = Vec::new();
+    
+    let mut ascii_grid: Vec<Vec<char>> = Vec::new();
     for (row_idx, row) in grid.iter().enumerate() {
         let mut new_line: Vec<char> = Vec::new();
-        let mut cur_passed_path_segments = 0;
         for (col_idx, char_) in row.iter().enumerate() {
             let cur_pos_is_on_path = path.iter().find(|element| element.0 == row_idx && element.1 == col_idx).is_some();
             if cur_pos_is_on_path {
-                let previous_char = row.get(col_idx-1).unwrap();
-                // let connects_to_previous_symbol = *char_ != '-' 
-                //     || *char_ == '7' &&  (*previous_char == '-' || *previous_char == 'L' || *previous_char == 'F')
-                //     || *char_ == 'J' && (*previous_char == '-' || *previous_char == 'L' || *previous_char == 'F');
-                // cur_passed_path_segments += if connects_to_previous_symbol { 0 } else { 1 };
-                
-                // let is_prev_symbol_counter = *previous_char == '.' || *previous_char == '|';
-                // cur_passed_path_segments += if is_prev_symbol_counter { 1 } else { 0 };
-
-                cur_passed_path_segments += 1;
-                
                 new_line.push(match char_ {
                     '7' => { '┓' },
                     'L' => { '┗' },
@@ -254,76 +278,48 @@ pub fn p2() {
                     '-' => { '━' },
                     _ => '?',
                 });
-            } else {
-                if cur_passed_path_segments % 2 == 1 {
-                    new_line.push('●');
-                } else {
-                    new_line.push(' ');
-                }
-            }
-        }
-        new_grid_from_horizontal.push(new_line);
-    }
-
-    let mut new_grid_from_vertical: Vec<Vec<char>> = Vec::new();
-    for col_idx in 0..grid[0].len() {
-        let mut new_line: Vec<char> = Vec::new();
-        let mut cur_passed_path_segments = 0;
-        for row_idx in 0..grid.len() {
-            let char_ = &grid[row_idx][col_idx];
-            let cur_pos_is_on_path = path.iter().find(|element| element.0 == row_idx && element.1 == col_idx).is_some();
-            if cur_pos_is_on_path {
-                //let previous_char = if row_idx > 0 { grid[row_idx - 1][col_idx] } else { '_' }; // Assume '_' for no previous character
-
-                cur_passed_path_segments += 1;
-                
-                new_line.push(match char_ {
-                    '7' => { '┓' },
-                    'L' => { '┗' },
-                    'J' => { '┛' },
-                    'F' => { '┏' },
-                    '|' => { '┃' },
-                    '-' => { '━' },
-                    _ => '?',
-                });
-            } else {
-                if cur_passed_path_segments % 2 == 1 {
-                    new_line.push('●');
-                } else {
-                    new_line.push(' ');
-                }
-            }
-        }
-        new_grid_from_vertical.push(new_line);
-    }
-
-    let mut final_grid: Vec<Vec<char>> = Vec::new();
-    for row_idx in 0..new_grid_from_horizontal.len() {
-        let mut new_line: Vec<char> = Vec::new();
-        for col_idx in 0..new_grid_from_horizontal[0].len() {
-            let from_horizontal = new_grid_from_horizontal[row_idx][col_idx];
-            let from_vertical = new_grid_from_vertical[col_idx][row_idx];
-            if from_horizontal == from_vertical {
-                new_line.push(from_horizontal);
-            } else {
+            }else{
                 new_line.push(' ');
             }
         }
-        final_grid.push(new_line);
+        ascii_grid.push(new_line);
     }
-    let final_grid = final_grid;
-    /*
-    result:
-    */
 
+    let mut padded_grid: Vec<Vec<char>> = pad_matrix(&ascii_grid);
+    flood_fill(&mut padded_grid, (150, 140), '●');
+    
     let mut file: File = File::create("src/d10/grid.txt").expect("Could not create file");
-    for row in &final_grid {
+    for row in padded_grid.clone() {
         let mut row_str: Vec<String> = row.iter().map(|c| c.to_string()).collect();
         row_str.push("\n".to_string());
         let line = row_str.join("");
         file.write_all(line.as_bytes()).expect("Could not write to file");
     }
 
+    let final_grid: Vec<Vec<char>> = padded_grid.into_iter().enumerate()
+        .filter(|&(i, _)| i % 2 == 0).map(|(_, row)| 
+            row.into_iter().enumerate().filter(|&(j, _)| j % 2 == 0).map(|(_, c)| c).collect()
+        ).collect();
+
     let result = final_grid.iter().fold(0, |sum, row| sum + row.iter().filter(|char_| **char_ == '●').collect::<Vec<_>>().len());
     println!("result: {result:?}{} ", if result >= 1391 { " which is too high" } else {""});
+}
+
+fn flood_fill(grid: &mut Vec<Vec<char>>, (x, y): (usize, usize), new_char: char) {
+    let old_char = ' ';  // Assuming we're filling space.
+    let mut queue = VecDeque::new();
+    queue.push_back((x, y));
+
+    while let Some((x, y)) = queue.pop_front() {
+        if grid[x][y] != old_char {
+            continue;
+        }
+
+        grid[x][y] = new_char;
+
+        if x >= 1 && grid[x - 1][y] == old_char { queue.push_back((x - 1, y)); }
+        if y >= 1 && grid[x][y - 1] == old_char { queue.push_back((x, y - 1)); }
+        if x < grid.len() - 1 && grid[x + 1][y] == old_char { queue.push_back((x + 1, y)); }
+        if y < grid[0].len() - 1 && grid[x][y + 1] == old_char { queue.push_back((x, y + 1)); }
+    }
 }
