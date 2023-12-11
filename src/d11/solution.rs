@@ -1,4 +1,4 @@
-use std::{fs::{self}};
+use std::fs::{self};
 
 fn read_puzzle_input() -> String {
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -73,16 +73,6 @@ where T: Copy
         for j in i+1..galaxies.len() {
             result.push((galaxies[i], galaxies[j]));
         }
-    }
-    result
-}
-
-fn abs_diff<T>(input: &Vec<((T, T), (T, T))>) -> Vec<(T, T)> where T: std::cmp::Ord + std::ops::Sub<Output=T> + Copy {
-    let mut result = Vec::new();
-    for item in input {
-        let x_diff = if item.0 .0 > item.1 .0 { item.0 .0 - item.1 .0 } else { item.1 .0 - item.0 .0 };
-        let y_diff = if item.0 .1 > item.1 .1 { item.0 .1 - item.1 .1 } else { item.1 .1 - item.0 .1 };
-        result.push((x_diff, y_diff));
     }
     result
 }
