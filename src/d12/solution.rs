@@ -116,7 +116,3 @@ pub fn generate_permutations(string: &str) -> Vec<String> {
     }
     permutations
 }
-
-pub fn p2() {
-    let puzzle_input: String = read_puzzle_input();
-}

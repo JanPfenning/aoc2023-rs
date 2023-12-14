@@ -72,9 +72,10 @@ use d11::solution::p2 as solutionD11P2;
 
 mod d12 {
   pub mod solution;
+  pub mod solution_part_2;
 }
 use d12::solution::p1 as solutionD12P1;
-use d12::solution::p2 as solutionD12P2;
+use d12::solution_part_2::p2 as solutionD12P2;
 
 mod d13 {
   pub mod solution;
