@@ -302,7 +302,7 @@ pub fn p2() {
     let grids_with_permutations = grids.iter()
         .map(|original_grid| (original_grid, bit_flip_permutations(original_grid)));
 
-    let grids_with_correct_permutation = grids_with_permutations.enumerate().map(|(grid_idx, (original_grid, permutations_of_gird))| {
+    let grids_with_correct_permutation = grids_with_permutations.map(|(original_grid, permutations_of_gird)| {
         let original_grid_result: (usize, usize) = {
             let rows = original_grid.len();
             let mut result = None;
@@ -361,7 +361,7 @@ pub fn p2() {
         })
         .collect::<Vec<_>>();
         // println!("mirror_position for permutations with a result {:?}", permutations_with_possible_mirror);
-        let permutations_with_possible_mirror_and_no_other_same_solution = retain_uniques(permutations_with_possible_mirror.iter().map(|(permutation_idx, result)| *result).collect::<Vec<_>>());
+        let permutations_with_possible_mirror_and_no_other_same_solution = retain_uniques(permutations_with_possible_mirror.iter().map(|(_permutation_idx, result)| *result).collect::<Vec<_>>());
         // println!("{:?}", permutations_with_possible_mirror_and_no_other_same_solution);
         assert_eq!(permutations_with_possible_mirror_and_no_other_same_solution.len(), 1);
         // todo: doesnt find the permutation where row_idx 8 and col_idx 11 flips from . to #;

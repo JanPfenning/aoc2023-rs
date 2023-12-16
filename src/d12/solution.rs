@@ -68,7 +68,7 @@ pub fn p1() {
     bar.set_style(ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] [{bar:.cyan/blue}] {pos}/{len}"));
     
     let mut result = 0;
-    for (i, (string, expected_value)) in lines.iter().enumerate() {
+    for (string, expected_value) in lines.iter() {
         //println!("\nline: {i}");
         let permutations = generate_permutations(string);
         //permutations.iter().for_each(|permutation| println!("{:?}", permutation));
@@ -105,7 +105,7 @@ pub fn generate_permutations(string: &str) -> Vec<String> {
     for n in 0..iterations {
         let binary = format!("{:0width$b}", n, width = bits);
         let mut result = String::from(string);
-        binary.chars().rev().collect::<Vec<char>>().iter().enumerate().for_each(|(i,b)| {
+        binary.chars().rev().collect::<Vec<char>>().iter().for_each(|b| {
             if *b == '0' {
                 result = result.replacen("?", ".", 1);
             } else {

@@ -1,4 +1,4 @@
-use std::{fs::{self}, collections::{HashMap, HashSet}};
+use std::fs;
 
 fn read_puzzle_input() -> String {
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -10,9 +10,9 @@ fn read_puzzle_input() -> String {
 }
 
 pub fn p1() {
-    let puzzle_input: String = read_puzzle_input();
+    let _puzzle_input: String = read_puzzle_input();
 }
 
 pub fn p2() {
-    let puzzle_input = read_puzzle_input();
+    let _puzzle_input = read_puzzle_input();
 }
