@@ -1,3 +1,4 @@
+use core::panic;
 use std::{fs::{self, File}, collections::VecDeque};
 use std::io::prelude::*;
 use regex::Regex;
@@ -97,6 +98,71 @@ fn flood_fill(grid: &mut Vec<Vec<char>>, (x, y): (usize, usize), new_char: char)
     }
 }
 
+enum Direction { Up, Down, Right, Left }
+
+struct Instruction {
+    direction: Direction,
+    value: isize,
+}
+
+fn decode(instructions: Vec<Instruction>) -> Vec<[isize; 2]> {
+    let mut x: isize = 0;
+    let mut y: isize = 0;
+    let mut corners = vec![[0, 0]];
+
+    for instruction in instructions {
+        match instruction.direction {
+            Direction::Up => y += instruction.value,
+            Direction::Down => y -= instruction.value,
+            Direction::Right => x += instruction.value,
+            Direction::Left => x -= instruction.value,
+        }
+
+        corners.push([x as isize, y as isize]);
+    }
+
+    corners.push(corners[0]);  // close the polygon
+    corners
+}
+
 pub fn p2() {
     let puzzle_input = read_puzzle_input();
+    let lines = puzzle_input.split('\n').map(|line| line.to_string()).collect::<Vec<String>>();
+    let instructions = lines.iter().map(|line| {
+        let re = regex::Regex::new(r"#\b[0-9A-Fa-f]{6}\b").unwrap();
+        let cap = re.captures(line).unwrap();
+        let hex = &cap[0][1..];    // Remove the # at the start
+        let value_hex = &hex[..5]; // First 5 characters for the value
+        let direction_hex = &hex[5..6]; // Last character for the direction
+        let decimal = isize::from_str_radix(value_hex, 16).unwrap();
+        Instruction {
+            direction: match direction_hex {
+                "0" => {Direction::Right},
+                "1" => {Direction::Down},
+                "2" => {Direction::Left},
+                "3" => {Direction::Up},
+                _ => {panic!("invalid direction")},
+            },
+            value: decimal,
+        }
+    }).collect::<Vec<_>>();
+
+    let corners: Vec<[isize; 2]> = decode(instructions);
+    println!("{:?}", corners);
+
+    // Gauss's area formula https://en.wikipedia.org/wiki/Shoelace_formula
+    let mut area: isize = 0;
+    for i in 0..corners.len() - 1 {
+        let current = corners[i];
+        let next = corners[i + 1];
+        area += current[0] * next[1] - current[1] * next[0];
+    }
+
+    let mut perimeter: isize = 0;
+    for i in 0..corners.len() {
+        let p1 = corners[i];
+        let p2 = corners[(i+1) % corners.len()];
+        perimeter += (p1[0] - p2[0]).abs() + (p1[1] - p2[1]).abs();
+    }
+    println!("result {}", ((area as f64).abs() / 2.0) + (perimeter as f64 / 2.0) + 1.0);
 }
