@@ -113,6 +113,12 @@ mod d18 {
 use d18::solution::p1 as solutionD18P1;
 use d18::solution::p2 as solutionD18P2;
 
+mod d19 {
+  pub mod solution;
+}
+use d19::solution::p1 as solutionD19P1;
+use d19::solution::p2 as solutionD19P2;
+
 fn main() {
   let args: Vec<String> = args().collect();
   let mut day = None;
@@ -183,6 +189,8 @@ fn main() {
   map.insert("d17p2".to_string(), solutionD17P2 as fn());
   map.insert("d18p1".to_string(), solutionD18P1 as fn());
   map.insert("d18p2".to_string(), solutionD18P2 as fn());
+  map.insert("d19p1".to_string(), solutionD19P1 as fn());
+  map.insert("d19p2".to_string(), solutionD19P2 as fn());
   
   let func_name_to_query = format!("d{day}p{part}");
   println!("func name to query map with: {}",func_name_to_query);
