@@ -11,7 +11,6 @@ fn read_puzzle_input() -> String {
 
 type Grid = Vec<Vec<char>>;
 type Coordinate = (usize, usize);
-type Path = Vec<Coordinate>;
 
 pub fn p1() {
     let _puzzle_input: String = read_puzzle_input();
@@ -119,7 +118,7 @@ fn traverse(grid: &Grid, energized: &mut HashSet<(Coordinate, Direction)>, previ
     }
 }
 
-fn write_energized_grid_to_file(grid: &Grid, energized: &mut HashSet<(Coordinate, Direction)>) -> std::io::Result<()> {
+fn _write_energized_grid_to_file(grid: &Grid, energized: &mut HashSet<(Coordinate, Direction)>) -> std::io::Result<()> {
     //println!("write path to file");
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let file_path = root.join("src/d16/energized_grid.txt");

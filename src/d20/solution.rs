@@ -73,7 +73,7 @@ fn push_button(modules: &mut HashMap<String, Box<Module>>) {
     //println!("\n----\npush button\n----\n");
     let mut signal_propagation_queue: VecDeque<(String, String, (bool, Vec<String>))> = VecDeque::new();
     let next_signal = ("button".to_string(), "broadcaster".to_string(), handle_module(false, "".to_string(), &mut modules.get_mut("broadcaster").unwrap()));
-    let (from, to, (new_pulse, destinations)) = next_signal.clone();
+    //let (from, to, (new_pulse, destinations)) = next_signal.clone();
     //println!("sending low from {from} to {to} resulting in {} to {destinations:?}", if new_pulse {"high"} else {"low"});
     signal_propagation_queue.push_back(next_signal);
     while let Some((_from, to, (pulse, propagate_to))) = signal_propagation_queue.pop_front() {
@@ -107,7 +107,7 @@ fn push_button(modules: &mut HashMap<String, Box<Module>>) {
             match dest_module {
                 Some(dest_module) => {
                     let next_signal = (to.clone(), dest.clone(), handle_module(pulse, to.clone(), dest_module));
-                    let (from, to, (new_pulse, destinations))  = next_signal.clone();
+                    //let (from, to, (new_pulse, destinations))  = next_signal.clone();
                     //println!("sending {} from {from} to {to} resulting in {} to {destinations:?}", if pulse {"high"} else {"low"}, if new_pulse {"high"} else {"low"});
                     signal_propagation_queue.push_back(next_signal)
                 },
@@ -149,7 +149,7 @@ fn handle_flip_flop(pulse: bool, _from: String, module: &mut Module) -> (bool, V
 fn handle_conjunction(pulse: bool, from: String, module: &mut Module) -> (bool, Vec<String>) {
     let index = module.inputs.iter().position(|(_state, inp)| *inp == from).expect(&format!("did not find input module with name '{from}' in module {module:?}"));
     module.inputs.get_mut(index).unwrap().0 = pulse;
-    let all_inputs_true = module.inputs.iter().all(|(state, inp)| *state);
+    let all_inputs_true = module.inputs.iter().all(|(state, _inp)| *state);
     let propagation_pulse = if all_inputs_true { false } else { true };
     (propagation_pulse, module.propagate_to.clone())
 }
